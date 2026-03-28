@@ -84,12 +84,6 @@ let els = {
   adminPhoto: null,
   pendingRequestsList: null,
   logsList: null,
-  compassTarget: null,
-  compassStatus: null,
-  compassArrow: null,
-  participantsLocationList: null,
-  enableLocationBtn: null,
-  enableOrientationBtn: null,
   profileForm: null,
   profileDisplayName: null,
   profileEmail: null,
@@ -120,9 +114,6 @@ const state = {
   contestPollByLogId: new Map(),
   selectedProfileUserId: null,
   unsubscribers: [],
-  heading: 0,
-  myLocation: null,
-  targetLocation: null,
   deferredInstallPrompt: null,
   isListenerActive: false,
   lastLocationUpdate: 0,
@@ -283,11 +274,6 @@ function wireUiEvents() {
   els.groupParticipantsList?.addEventListener("click", handleProfileListClick);
   els.auraHistoryList?.addEventListener("click", handleAuraHistoryClick);
 
-  els.enableLocationBtn?.addEventListener("click", enableLocationUpdates);
-  els.enableOrientationBtn?.addEventListener("click", enableOrientationUpdates);
-  els.compassTarget?.addEventListener("change", updateCompassTarget);
-  els.participantsLocationList?.addEventListener("click", handleLocatorListClick);
-
   shell.fabRefresh.addEventListener("click", () => {
     clearSubscriptions();
     subscribeCoreData();
@@ -355,10 +341,8 @@ function subscribeCoreData() {
     renderLeaderboard();
     renderGroupParticipants();
     renderSelectOptions();
-    renderParticipantsLocationList();
     syncProfileForm();
     renderProfileInspector();
-    updateCompassTarget();
   });
 
   const logsQ = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(150));
@@ -725,21 +709,17 @@ function renderSelectOptions() {
     els.requestTarget,
     els.voteSessionTarget,
     els.coinTarget,
-    els.adminTarget,
-    els.compassTarget
+    els.adminTarget
   ].filter(Boolean);
 
-  const admins = state.users.filter((user) => user.role === "admin" && user.id !== auth.currentUser.uid);
-  const participants = state.users.filter(
-    (user) => user.role !== "admin" && user.id !== auth.currentUser.uid
-  );
-  const everyoneElse = state.users.filter((user) => user.id !== auth.currentUser.uid);
+  const admins = state.users.filter((user) => user.role === "admin");
+  const participants = state.users.filter((user) => user.role !== "admin");
+  const everyone = state.users;
 
   fillSelect(els.requestTarget, admins);
-  fillSelect(els.voteSessionTarget, participants);
+  fillSelect(els.voteSessionTarget, everyone);
   fillSelect(els.coinTarget, participants);
-  fillSelect(els.adminTarget, everyoneElse);
-  fillSelect(els.compassTarget, participants);
+  fillSelect(els.adminTarget, everyone);
 
   allSelects.forEach((select) => {
     select.disabled = select.options.length === 0;
@@ -1509,163 +1489,6 @@ async function handleRequestDecision(requestId, action) {
   }
 }
 
-async function enableLocationUpdates() {
-  if (!navigator.geolocation) {
-    toast("Geolocation is not supported in this browser.");
-    return;
-  }
-
-  navigator.geolocation.watchPosition(
-    async (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      state.myLocation = { lat, lng };
-      if (els.compassStatus) {
-        els.compassStatus.textContent = "Location active.";
-      }
-
-      if (!auth.currentUser?.uid) {
-        return;
-      }
-
-      await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        location: { lat, lng },
-        locationUpdatedAt: serverTimestamp()
-      });
-
-      updateCompassArrow();
-    },
-    (error) => {
-      if (els.compassStatus) {
-        els.compassStatus.textContent = `Location error: ${error.message}`;
-      }
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 8000,
-      timeout: 12000
-    }
-  );
-}
-
-async function enableOrientationUpdates() {
-  try {
-    if (
-      typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function"
-    ) {
-      const permissionState = await DeviceOrientationEvent.requestPermission();
-      if (permissionState !== "granted") {
-        if (els.compassStatus) {
-          els.compassStatus.textContent = "Orientation permission denied.";
-        }
-        return;
-      }
-    }
-
-    window.addEventListener("deviceorientationabsolute", handleOrientation, true);
-    window.addEventListener("deviceorientation", handleOrientation, true);
-    if (els.compassStatus) {
-      els.compassStatus.textContent = "Orientation active.";
-    }
-  } catch (error) {
-    toast(error.message || "Could not enable orientation.");
-  }
-}
-
-function handleOrientation(event) {
-  let heading;
-
-  if (typeof event.webkitCompassHeading === "number") {
-    heading = event.webkitCompassHeading;
-  } else if (typeof event.alpha === "number") {
-    heading = 360 - event.alpha;
-  }
-
-  if (typeof heading !== "number" || Number.isNaN(heading)) {
-    return;
-  }
-
-  state.heading = normalizeDegrees(heading);
-  updateCompassArrow();
-}
-
-function updateCompassTarget() {
-  if (!els.compassTarget) {
-    return;
-  }
-
-  const targetId = els.compassTarget.value;
-  const user = state.usersById.get(targetId);
-
-  if (!user?.location || user.location.lat == null || user.location.lng == null) {
-    state.targetLocation = null;
-    if (els.compassStatus) {
-      els.compassStatus.textContent = "Target has no known location yet.";
-    }
-    return;
-  }
-
-  state.targetLocation = {
-    lat: Number(user.location.lat),
-    lng: Number(user.location.lng)
-  };
-
-  if (els.compassStatus) {
-    els.compassStatus.textContent = `Tracking ${user.displayName || "participant"}.`;
-  }
-  updateCompassArrow();
-}
-
-function handleLocatorListClick(event) {
-  const button = event.target.closest("button[data-locate-id]");
-  if (!button || !els.compassTarget) {
-    return;
-  }
-
-  els.compassTarget.value = button.dataset.locateId;
-  updateCompassTarget();
-  toast("Target selected in compass.");
-}
-
-function renderParticipantsLocationList() {
-  if (!els.participantsLocationList) {
-    return;
-  }
-
-  els.participantsLocationList.innerHTML = "";
-
-  const participants = state.users.filter((user) => user.role !== "admin");
-  if (participants.length === 0) {
-    const li = document.createElement("li");
-    li.className = "list-item";
-    li.textContent = "No participants available.";
-    els.participantsLocationList.appendChild(li);
-    return;
-  }
-
-  participants.forEach((user) => {
-    const lat = user.location?.lat;
-    const lng = user.location?.lng;
-    const hasGps = lat != null && lng != null;
-
-    const li = document.createElement("li");
-    li.className = "list-item";
-    li.innerHTML = `
-      <div class="list-item-head">
-        <strong>${escapeHtml(user.displayName || "Aura User")}</strong>
-        <span>${hasGps ? "GPS Ready" : "No GPS"}</span>
-      </div>
-      <p class="muted">${hasGps ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : "Coordinates unavailable"}</p>
-      <p class="muted">Last update: ${formatTimestamp(user.locationUpdatedAt)}</p>
-      <div class="list-item-actions">
-        <button class="btn btn-tonal" type="button" data-locate-id="${user.id}" ${hasGps ? "" : "disabled"}>Locate</button>
-      </div>
-    `;
-    els.participantsLocationList.appendChild(li);
-  });
-}
-
 function renderPersonalHistories() {
   renderAuraHistory();
   renderCoinHistory();
@@ -1923,18 +1746,6 @@ function filterPersonalLogs(logs, uid) {
     .sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp));
 }
 
-function updateCompassArrow() {
-  if (!state.myLocation || !state.targetLocation) {
-    return;
-  }
-
-  const bearing = bearingBetween(state.myLocation, state.targetLocation);
-  const rotation = normalizeDegrees(bearing - state.heading);
-  if (els.compassArrow) {
-    els.compassArrow.style.transform = `rotate(${rotation}deg)`;
-  }
-}
-
 async function handleProfileSubmit(event) {
   event.preventDefault();
 
@@ -2115,13 +1926,6 @@ function cacheDynamicElements() {
     adminPhoto: document.getElementById("admin-photo"),
     pendingRequestsList: document.getElementById("pending-requests-list"),
     logsList: document.getElementById("logs-list"),
-    compassTarget: document.getElementById("compass-target"),
-    compassStatus: document.getElementById("compass-status"),
-    compassArrow: document.getElementById("compass-arrow"),
-    participantsLocationList: document.getElementById("participants-location-list"),
-    enableLocationBtn: document.getElementById("enable-location-btn"),
-    enableOrientationBtn: document.getElementById("enable-orientation-btn"),
-    compassDistance: document.getElementById("compass-distance"),
     syncIndicator: document.getElementById("sync-indicator"),
     profileForm: document.getElementById("profile-form"),
     profileDisplayName: document.getElementById("profile-display-name"),
@@ -2139,36 +1943,6 @@ function cacheDynamicElements() {
     inspectorPerformance: document.getElementById("inspector-performance"),
   };
 }
-
-function bearingBetween(from, to) {
-  const lat1 = toRad(from.lat);
-  const lon1 = toRad(from.lng);
-  const lat2 = toRad(to.lat);
-  const lon2 = toRad(to.lng);
-
-  const dLon = lon2 - lon1;
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x =
-    Math.cos(lat1) * Math.sin(lat2) -
-    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-
-  return normalizeDegrees(toDeg(Math.atan2(y, x)));
-}
-
-function haversineDistance(from, to) {
-  const R = 6371;
-  const lat1 = toRad(from.lat);
-  const lat2 = toRad(to.lat);
-  const dLat = toRad(to.lat - from.lat);
-  const dLon = toRad(to.lng - from.lng);
-
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1) * Math.cos(lat2) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 
 export function calculateLevelAndMastery(auraPoints) {
   const points = Math.max(0, Number(auraPoints || 0));
@@ -2215,18 +1989,6 @@ function toRoman(value) {
   }
 
   return result;
-}
-
-function normalizeDegrees(deg) {
-  return ((deg % 360) + 360) % 360;
-}
-
-function toRad(deg) {
-  return (deg * Math.PI) / 180;
-}
-
-function toDeg(rad) {
-  return (rad * 180) / Math.PI;
 }
 
 function toast(message) {
