@@ -82,6 +82,7 @@ let els = {
   adminTitle: null,
   adminDescription: null,
   adminPhoto: null,
+  voteApprovalsList: null,
   pendingRequestsList: null,
   logsList: null,
   profileForm: null,
@@ -97,6 +98,8 @@ let els = {
   inspectorGps: null,
   inspectorGpsUpdated: null,
   inspectorLastLogin: null,
+  inspectorLevel: null,
+  inspectorMastery: null,
   inspectorPerformance: null
 };
 
@@ -115,11 +118,11 @@ const state = {
   selectedProfileUserId: null,
   unsubscribers: [],
   deferredInstallPrompt: null,
-  isListenerActive: false,
   lastLocationUpdate: 0,
   lastOrientationUpdate: 0,
   pendingRenderUpdates: new Set(),
-  renderScheduled: false
+  renderScheduled: false,
+  voteTickerId: null
 };
 
 init();
@@ -213,6 +216,11 @@ async function handleInstallAppClick() {
     return;
   }
 
+  if (!window.isSecureContext) {
+    toast("Install works only on HTTPS or localhost.");
+    return;
+  }
+
   toast("Open your browser menu and tap Add to Home screen.");
 }
 
@@ -248,6 +256,14 @@ function wireUiEvents() {
     validateListeners();
   }, 1000);
 
+  if (!state.voteTickerId) {
+    state.voteTickerId = window.setInterval(() => {
+      if (auth.currentUser) {
+        maybeAutoCloseVoteSessions();
+      }
+    }, 1000);
+  }
+
   shell.tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".tab");
     if (!tab) {
@@ -269,6 +285,7 @@ function wireUiEvents() {
   els.voteSessionForm?.addEventListener("submit", handleStartAuraVoteSession);
   els.auraVoteSessionsList?.addEventListener("click", handleAuraVoteSessionsClick);
   els.adminVoteSessionsList?.addEventListener("click", handleAdminVoteSessionsClick);
+  els.voteApprovalsList?.addEventListener("click", handleVoteApprovalsClick);
   els.contestPollsList?.addEventListener("click", handleContestPollsClick);
   els.leaderboardList?.addEventListener("click", handleProfileListClick);
   els.groupParticipantsList?.addEventListener("click", handleProfileListClick);
@@ -327,13 +344,12 @@ function setupRoleUI() {
 }
 
 function subscribeCoreData() {
-  state.isListenerActive = true;
-  updateSyncIndicator();
   const uid = auth.currentUser?.uid;
-  const now = Date.now();
-  const usersQ = query(collection(db, "users"), orderBy("auraPoints", "desc"));
+  const usersQ = query(collection(db, "users"));
   const usersUnsub = onSnapshot(usersQ, (snapshot) => {
-    state.users = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    state.users = snapshot.docs
+      .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      .sort((a, b) => Number(b.auraPoints || 0) - Number(a.auraPoints || 0));
     state.usersById = new Map(state.users.map((user) => [user.id, user]));
 
     state.me = state.usersById.get(auth.currentUser.uid) || state.me;
@@ -360,6 +376,7 @@ function subscribeCoreData() {
   const voteSessionsQ = query(collection(db, "auraVoteSessions"), orderBy("timestamp", "desc"), limit(40));
   const voteSessionsUnsub = onSnapshot(voteSessionsQ, (snapshot) => {
     state.voteSessions = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    maybeAutoCloseVoteSessions();
     renderAuraVoteSessions();
     renderAdminVoteSessions();
   });
@@ -413,23 +430,30 @@ function subscribeCoreData() {
         renderPendingRequests(requests);
       })
     );
+
+    const pendingVoteApprovalsQ = query(
+      collection(db, "auraVoteSessions"),
+      where("status", "==", "pending_approval"),
+      limit(40)
+    );
+
+    extraUnsubs.push(
+      onSnapshot(pendingVoteApprovalsQ, (snapshot) => {
+        const rows = snapshot.docs
+          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+          .sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp));
+        renderVoteApprovals(rows);
+      })
+    );
   } else {
     renderPendingRequests([]);
+    renderVoteApprovals([]);
   }
 
   state.unsubscribers.push(usersUnsub, ...extraUnsubs);
 }
 
-function updateSyncIndicator() {
-  if (!els.syncIndicator) {
-    return;
-  }
-  els.syncIndicator.classList.toggle("hidden", !state.isListenerActive);
-}
-
 function clearSubscriptions() {
-  state.isListenerActive = false;
-  updateSyncIndicator();
   while (state.unsubscribers.length > 0) {
     const unsub = state.unsubscribers.pop();
     if (typeof unsub === "function") {
@@ -598,6 +622,12 @@ function renderProfileInspector() {
     els.inspectorGps.textContent = "Unknown";
     els.inspectorGpsUpdated.textContent = "Unknown";
     els.inspectorLastLogin.textContent = "Unknown";
+    if (els.inspectorLevel) {
+      els.inspectorLevel.textContent = "Unknown";
+    }
+    if (els.inspectorMastery) {
+      els.inspectorMastery.textContent = "Unknown";
+    }
     if (els.inspectorPerformance) {
       els.inspectorPerformance.textContent = "Unknown";
       els.inspectorPerformance.className = "status-pill";
@@ -609,6 +639,7 @@ function renderProfileInspector() {
   const lat = user.location?.lat;
   const lng = user.location?.lng;
   const gps = lat != null && lng != null ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : "Unknown";
+  const levelInfo = calculateLevelAndMastery(Number(user.auraPoints || 0));
 
   els.inspectorName.textContent = user.displayName || "Aura User";
   els.inspectorName.style.color = safeProfileColor(user.profileColor);
@@ -616,6 +647,12 @@ function renderProfileInspector() {
   els.inspectorGps.textContent = gps;
   els.inspectorGpsUpdated.textContent = formatTimestamp(user.locationUpdatedAt);
   els.inspectorLastLogin.textContent = formatTimestamp(user.lastLoginAt);
+  if (els.inspectorLevel) {
+    els.inspectorLevel.textContent = String(levelInfo.level);
+  }
+  if (els.inspectorMastery) {
+    els.inspectorMastery.textContent = levelInfo.masteryLabel;
+  }
 
   const perf = calculatePerformanceStatus(Number(user.auraPoints || 0));
   if (els.inspectorPerformance) {
@@ -705,6 +742,13 @@ function pickTopParticipant(scoreMap) {
 }
 
 function renderSelectOptions() {
+  const meProfile = state.me && auth.currentUser?.uid
+    ? { id: auth.currentUser.uid, ...state.me }
+    : null;
+  const everyone = meProfile && !state.users.some((user) => user.id === meProfile.id)
+    ? [...state.users, meProfile]
+    : state.users;
+
   const allSelects = [
     els.requestTarget,
     els.voteSessionTarget,
@@ -712,9 +756,8 @@ function renderSelectOptions() {
     els.adminTarget
   ].filter(Boolean);
 
-  const admins = state.users.filter((user) => user.role === "admin");
-  const participants = state.users.filter((user) => user.role !== "admin");
-  const everyone = state.users;
+  const admins = everyone.filter((user) => user.role === "admin");
+  const participants = everyone.filter((user) => user.role !== "admin");
 
   fillSelect(els.requestTarget, admins);
   fillSelect(els.voteSessionTarget, everyone);
@@ -866,11 +909,6 @@ async function handleRequestAura(event) {
 async function handleStartAuraVoteSession(event) {
   event.preventDefault();
 
-  if (state.me?.role !== "admin") {
-    toast("Only admins can start Aura voting.");
-    return;
-  }
-
   const targetUserId = els.voteSessionTarget?.value;
   const reason = els.voteSessionReason?.value.trim();
   const proposedAmount = Number(els.voteSessionAmount?.value);
@@ -883,19 +921,22 @@ async function handleStartAuraVoteSession(event) {
   try {
     await addDoc(collection(db, "auraVoteSessions"), {
       timestamp: serverTimestamp(),
-      startedByAdminId: auth.currentUser.uid,
+      createdByUserId: auth.currentUser.uid,
       targetUserId,
       reason,
       proposedAmount,
       proposalSum: proposedAmount,
       proposalCount: 1,
-      status: "open",
+      status: "pending_approval",
       upVotes: 0,
-      downVotes: 0
+      downVotes: 0,
+      expectedVoters: 0,
+      votingEndsAtMs: 0,
+      votingDurationSeconds: 60
     });
 
     els.voteSessionForm?.reset();
-    toast("Aura voting session started.");
+    toast("Vote proposal submitted. Waiting for admin approval.");
   } catch (error) {
     toast(error.message || "Could not start voting session.");
   }
@@ -910,6 +951,15 @@ function handleAuraVoteSessionsClick(event) {
     );
     handleCastAuraVote(voteBtn.dataset.sessionId, voteBtn.dataset.vote, proposalInput?.value);
   }
+}
+
+function handleVoteApprovalsClick(event) {
+  const btn = event.target.closest("button[data-session-id][data-session-action]");
+  if (!btn) {
+    return;
+  }
+
+  handleAuraVoteSessionAdminAction(btn.dataset.sessionId, btn.dataset.sessionAction);
 }
 
 function handleAdminVoteSessionsClick(event) {
@@ -934,13 +984,6 @@ async function handleCastAuraVote(sessionId, voteType, proposalValueInput) {
     return;
   }
 
-  const proposalMagnitude = Math.abs(Number(proposalValueInput));
-  if (!Number.isFinite(proposalMagnitude) || proposalMagnitude === 0) {
-    toast("Enter a valid proposal amount before voting.");
-    return;
-  }
-  const signedProposal = voteType === "up" ? proposalMagnitude : -proposalMagnitude;
-
   try {
     await runTransaction(db, async (transaction) => {
       const sessionRef = doc(db, "auraVoteSessions", sessionId);
@@ -954,24 +997,45 @@ async function handleCastAuraVote(sessionId, voteType, proposalValueInput) {
       if (!sessionSnap.exists()) {
         throw new Error("Voting session not found.");
       }
-      if (sessionSnap.data().status !== "open") {
+      const data = sessionSnap.data();
+      if (data.status !== "open") {
         throw new Error("Voting is closed for this session.");
       }
       if (ballotSnap.exists()) {
         throw new Error("You already voted on this session.");
       }
+      if (Number(data.votingEndsAtMs || 0) > 0 && Date.now() >= Number(data.votingEndsAtMs || 0)) {
+        transaction.update(sessionRef, {
+          status: "closed",
+          closedReason: "timeout",
+          closedAt: serverTimestamp()
+        });
+        throw new Error("Voting time is over for this session.");
+      }
 
-      const data = sessionSnap.data();
       const nextUp = Number(data.upVotes || 0) + (voteType === "up" ? 1 : 0);
       const nextDown = Number(data.downVotes || 0) + (voteType === "down" ? 1 : 0);
-      const nextProposalSum = Number(data.proposalSum || data.proposedAmount || 0) + signedProposal;
+      const typedCounter = Number(proposalValueInput);
+      const hasCounter = Number.isFinite(typedCounter) && typedCounter !== 0;
+      const offeredAmount = hasCounter ? typedCounter : Number(data.proposedAmount || 0);
+      const nextProposalSum = Number(data.proposalSum || data.proposedAmount || 0) + offeredAmount;
       const nextProposalCount = Number(data.proposalCount || 1) + 1;
+      const expectedVoters = Math.max(1, Number(data.expectedVoters || 0));
+      const totalVotes = nextUp + nextDown;
+      const shouldCloseNow = totalVotes >= expectedVoters;
 
       transaction.update(sessionRef, {
         upVotes: nextUp,
         downVotes: nextDown,
         proposalSum: nextProposalSum,
-        proposalCount: nextProposalCount
+        proposalCount: nextProposalCount,
+        ...(shouldCloseNow
+          ? {
+              status: "closed",
+              closedReason: "all_votes",
+              closedAt: serverTimestamp()
+            }
+          : {})
       });
 
       transaction.set(ballotRef, {
@@ -979,8 +1043,8 @@ async function handleCastAuraVote(sessionId, voteType, proposalValueInput) {
         sessionId,
         voterId: auth.currentUser.uid,
         voteType,
-        proposedAmount: proposalMagnitude,
-        signedProposedAmount: signedProposal
+        proposedAmount: offeredAmount,
+        hasCounter
       });
     });
 
@@ -1007,6 +1071,35 @@ async function handleAuraVoteSessionAdminAction(sessionId, action) {
 
       const session = sessionSnap.data();
 
+      if (action === "approve") {
+        if (session.status !== "pending_approval") {
+          throw new Error("Only pending vote proposals can be approved.");
+        }
+
+        transaction.update(sessionRef, {
+          status: "open",
+          approvedAt: serverTimestamp(),
+          approvedBy: auth.currentUser.uid,
+          expectedVoters: getVoteExpectedCount(),
+          votingEndsAtMs: Date.now() + 60000,
+          votingDurationSeconds: 60
+        });
+        return;
+      }
+
+      if (action === "reject") {
+        if (session.status !== "pending_approval") {
+          throw new Error("Only pending vote proposals can be rejected.");
+        }
+
+        transaction.update(sessionRef, {
+          status: "rejected",
+          rejectedAt: serverTimestamp(),
+          rejectedBy: auth.currentUser.uid
+        });
+        return;
+      }
+
       if (action === "close") {
         if (session.status !== "open") {
           throw new Error("Session is already closed.");
@@ -1024,8 +1117,8 @@ async function handleAuraVoteSessionAdminAction(sessionId, action) {
         throw new Error("Unknown session action.");
       }
 
-      if (!["open", "closed"].includes(session.status)) {
-        throw new Error("Session already finalized.");
+      if (session.status !== "closed") {
+        throw new Error("Close the vote before applying results.");
       }
       if (Number(session.proposalCount || 0) <= 0) {
         throw new Error("Session has no valid proposals.");
@@ -1037,10 +1130,7 @@ async function handleAuraVoteSessionAdminAction(sessionId, action) {
         throw new Error("Target participant missing.");
       }
 
-      const amount = Math.round(
-        Number(session.proposalSum || session.proposedAmount || 0) /
-          Math.max(Number(session.proposalCount || 1), 1)
-      );
+      const amount = computeVoteResultAmount(session);
       const prevAura = Number(targetSnap.data().auraPoints || 0);
       const prevCoins = Number(targetSnap.data().auraCoins || 0);
       const gainedCoins = amount > 0 ? Math.floor(amount / 10000) : 0;
@@ -1063,7 +1153,7 @@ async function handleAuraVoteSessionAdminAction(sessionId, action) {
         adminId: auth.currentUser.uid,
         targetUserId: session.targetUserId,
         amount,
-        title: "AuraVote Awarded",
+        title: "Vote Result Applied",
         description:
           `Final average from ${Math.max(Number(session.proposalCount || 1), 1)} proposals. ` +
           (session.reason || "Awarded through AuraVote session."),
@@ -1071,7 +1161,15 @@ async function handleAuraVoteSessionAdminAction(sessionId, action) {
       });
     });
 
-    toast(action === "close" ? "Voting session closed." : "Aura applied from vote session.");
+    if (action === "approve") {
+      toast("Vote proposal approved. Voting is now open for 1 minute.");
+    } else if (action === "reject") {
+      toast("Vote proposal rejected.");
+    } else if (action === "close") {
+      toast("Voting session closed.");
+    } else {
+      toast("Vote result applied.");
+    }
   } catch (error) {
     toast(error.message || "Session action failed.");
   }
@@ -1087,35 +1185,37 @@ function renderAuraVoteSessions() {
   if (state.voteSessions.length === 0) {
     const li = document.createElement("li");
     li.className = "list-item";
-    li.textContent = "No Aura voting sessions yet.";
+    li.textContent = "No vote sessions yet.";
     els.auraVoteSessionsList.appendChild(li);
     return;
   }
 
   state.voteSessions.forEach((session) => {
     const targetName = state.usersById.get(session.targetUserId)?.displayName || "Unknown";
+    const creatorName = state.usersById.get(session.createdByUserId)?.displayName || "Unknown";
     const myVote = state.mySessionVotes.get(session.id);
-    const status = session.status || "open";
-    const canVote = status === "open" && !myVote;
+    const status = session.status || "pending_approval";
+    const isOpen = status === "open";
+    const remainingLabel = getTimeRemainingLabel(session.votingEndsAtMs);
+    const canVote = isOpen && !myVote && remainingLabel !== "Ended";
     const proposalCount = Math.max(Number(session.proposalCount || 1), 1);
-    const averageAmount = Math.round(
-      Number(session.proposalSum || session.proposedAmount || 0) / proposalCount
-    );
+    const averageAmount = computeVoteResultAmount(session);
 
     const li = document.createElement("li");
     li.className = "list-item";
     li.innerHTML = `
       <div class="list-item-head">
-        <strong>${escapeHtml(targetName)} • Avg ${formatSigned(averageAmount)} Aura</strong>
+        <strong>${escapeHtml(targetName)} • Proposed ${formatSigned(session.proposedAmount || 0)} Aura</strong>
         <span>${escapeHtml(String(status).toUpperCase())}</span>
       </div>
       <p class="muted">Reason: ${escapeHtml(session.reason || "No reason")}</p>
-      <p class="muted">Admin proposed: ${formatSigned(session.proposedAmount || 0)} Aura</p>
-      <p class="muted">Proposal count: ${formatNumber(proposalCount)}</p>
+      <p class="muted">Created by: ${escapeHtml(creatorName)}</p>
+      <p class="muted">Responses used for result: ${formatNumber(proposalCount)}</p>
       <p class="muted">Votes: UP ${formatNumber(session.upVotes || 0)} • DOWN ${formatNumber(session.downVotes || 0)}</p>
-      <p class="muted">Started: ${formatTimestamp(session.timestamp)}</p>
-      <label class="muted">Your proposed amount
-        <input type="number" min="1" step="1" placeholder="e.g. 800" data-proposal-input-for="${session.id}" ${canVote ? "" : "disabled"} />
+      <p class="muted">Result if applied now: ${formatSigned(averageAmount)} Aura</p>
+      <p class="muted">Voting window: ${isOpen ? remainingLabel : "Not open"}</p>
+      <label class="muted">Counter-offer amount (optional)
+        <input type="number" step="1" placeholder="Leave empty to keep proposed amount" data-proposal-input-for="${session.id}" ${canVote ? "" : "disabled"} />
       </label>
       <div class="row">
         <button class="btn btn-tonal" type="button" data-session-id="${session.id}" data-vote="up" ${canVote ? "" : "disabled"}>Upvote</button>
@@ -1139,7 +1239,9 @@ function renderAdminVoteSessions() {
 
   els.adminVoteSessionsList.innerHTML = "";
 
-  if (state.voteSessions.length === 0) {
+  const manageableSessions = state.voteSessions.filter((session) => session.status !== "pending_approval");
+
+  if (manageableSessions.length === 0) {
     const li = document.createElement("li");
     li.className = "list-item";
     li.textContent = "No vote sessions to manage.";
@@ -1147,15 +1249,13 @@ function renderAdminVoteSessions() {
     return;
   }
 
-  state.voteSessions.forEach((session) => {
+  manageableSessions.forEach((session) => {
     const targetName = state.usersById.get(session.targetUserId)?.displayName || "Unknown";
-    const status = session.status || "open";
+    const status = session.status || "closed";
     const canClose = status === "open";
-    const canApply = ["open", "closed"].includes(status) && Number(session.proposalCount || 0) > 0;
+    const canApply = status === "closed" && Number(session.proposalCount || 0) > 0;
     const proposalCount = Math.max(Number(session.proposalCount || 1), 1);
-    const averageAmount = Math.round(
-      Number(session.proposalSum || session.proposedAmount || 0) / proposalCount
-    );
+    const averageAmount = computeVoteResultAmount(session);
 
     const li = document.createElement("li");
     li.className = "list-item";
@@ -1165,7 +1265,7 @@ function renderAdminVoteSessions() {
         <span>${escapeHtml(String(status).toUpperCase())}</span>
       </div>
       <p class="muted">Reason: ${escapeHtml(session.reason || "No reason")}</p>
-      <p class="muted">Admin proposed: ${formatSigned(session.proposedAmount || 0)} Aura</p>
+      <p class="muted">Proposed: ${formatSigned(session.proposedAmount || 0)} Aura</p>
       <p class="muted">Proposal count: ${formatNumber(proposalCount)}</p>
       <p class="muted">Votes: UP ${formatNumber(session.upVotes || 0)} • DOWN ${formatNumber(session.downVotes || 0)}</p>
       <div class="row">
@@ -1175,6 +1275,108 @@ function renderAdminVoteSessions() {
     `;
     els.adminVoteSessionsList.appendChild(li);
   });
+}
+
+function renderVoteApprovals(rows) {
+  if (!els.voteApprovalsList) {
+    return;
+  }
+
+  els.voteApprovalsList.innerHTML = "";
+
+  if (!rows || rows.length === 0) {
+    const li = document.createElement("li");
+    li.className = "list-item";
+    li.textContent = "No vote proposals awaiting approval.";
+    els.voteApprovalsList.appendChild(li);
+    return;
+  }
+
+  rows.forEach((session) => {
+    const targetName = state.usersById.get(session.targetUserId)?.displayName || "Unknown";
+    const creatorName = state.usersById.get(session.createdByUserId)?.displayName || "Unknown";
+
+    const li = document.createElement("li");
+    li.className = "list-item";
+    li.innerHTML = `
+      <div class="list-item-head">
+        <strong>${escapeHtml(targetName)} • ${formatSigned(session.proposedAmount || 0)} Aura</strong>
+        <span>PENDING</span>
+      </div>
+      <p class="muted">Created by: ${escapeHtml(creatorName)}</p>
+      <p class="muted">Reason: ${escapeHtml(session.reason || "No reason")}</p>
+      <div class="row">
+        <button class="btn btn-primary" type="button" data-session-id="${session.id}" data-session-action="approve">Approve</button>
+        <button class="btn btn-danger" type="button" data-session-id="${session.id}" data-session-action="reject">Reject</button>
+      </div>
+    `;
+    els.voteApprovalsList.appendChild(li);
+  });
+}
+
+function maybeAutoCloseVoteSessions() {
+  state.voteSessions.forEach((session) => {
+    if (session.status !== "open") {
+      return;
+    }
+
+    const voteCount = Number(session.upVotes || 0) + Number(session.downVotes || 0);
+    const expectedVoters = Math.max(1, Number(session.expectedVoters || 0));
+    const endedByCount = voteCount >= expectedVoters;
+    const endedByTime = Number(session.votingEndsAtMs || 0) > 0 && Date.now() >= Number(session.votingEndsAtMs || 0);
+
+    if (!endedByCount && !endedByTime) {
+      return;
+    }
+
+    const reason = endedByCount ? "all_votes" : "timeout";
+    void closeVoteSessionIfNeeded(session.id, reason);
+  });
+}
+
+async function closeVoteSessionIfNeeded(sessionId, reason) {
+  try {
+    await runTransaction(db, async (transaction) => {
+      const sessionRef = doc(db, "auraVoteSessions", sessionId);
+      const sessionSnap = await transaction.get(sessionRef);
+      if (!sessionSnap.exists() || sessionSnap.data().status !== "open") {
+        return;
+      }
+
+      transaction.update(sessionRef, {
+        status: "closed",
+        closedReason: reason,
+        closedAt: serverTimestamp()
+      });
+    });
+  } catch {
+    // Non-fatal race with other clients auto-closing at the same time.
+  }
+}
+
+function getVoteExpectedCount() {
+  return Math.max(1, state.users.length || 0);
+}
+
+function computeVoteResultAmount(session) {
+  const count = Math.max(Number(session.proposalCount || 1), 1);
+  const sum = Number(session.proposalSum || session.proposedAmount || 0);
+  return Math.round(sum / count);
+}
+
+function getTimeRemainingLabel(votingEndsAtMs) {
+  const endMs = Number(votingEndsAtMs || 0);
+  if (!endMs) {
+    return "Not started";
+  }
+
+  const remaining = endMs - Date.now();
+  if (remaining <= 0) {
+    return "Ended";
+  }
+
+  const sec = Math.ceil(remaining / 1000);
+  return `${sec}s remaining`;
 }
 
 async function handleSendCoin(event) {
@@ -1924,9 +2126,9 @@ function cacheDynamicElements() {
     adminTitle: document.getElementById("admin-title"),
     adminDescription: document.getElementById("admin-description"),
     adminPhoto: document.getElementById("admin-photo"),
+    voteApprovalsList: document.getElementById("vote-approvals-list"),
     pendingRequestsList: document.getElementById("pending-requests-list"),
     logsList: document.getElementById("logs-list"),
-    syncIndicator: document.getElementById("sync-indicator"),
     profileForm: document.getElementById("profile-form"),
     profileDisplayName: document.getElementById("profile-display-name"),
     profileEmail: document.getElementById("profile-email"),
@@ -1940,6 +2142,8 @@ function cacheDynamicElements() {
     inspectorGps: document.getElementById("inspector-gps"),
     inspectorGpsUpdated: document.getElementById("inspector-gps-updated"),
     inspectorLastLogin: document.getElementById("inspector-last-login"),
+    inspectorLevel: document.getElementById("inspector-level"),
+    inspectorMastery: document.getElementById("inspector-mastery"),
     inspectorPerformance: document.getElementById("inspector-performance"),
   };
 }
