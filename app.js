@@ -2004,8 +2004,8 @@ async function loadViewPartials() {
         return;
       }
 
-      const fallbackRootPath = path.replace(/^views\//, "");
-      const candidates = [path, fallbackRootPath].filter((value, idx, arr) => value && arr.indexOf(value) === idx);
+      const rootPath = path.replace(/^views\//, "");
+      const candidates = path === rootPath ? [path] : [rootPath, path];
 
       let html = null;
       for (const candidate of candidates) {
@@ -2022,7 +2022,8 @@ async function loadViewPartials() {
       }
 
       if (html == null) {
-        section.innerHTML = `<article class="panel glass"><p class="muted">Could not load ${escapeHtml(path)}. Keep view files in views/ or root.</p></article>`;
+        const name = path.replace(/^views\//, "").replace(/\.html$/, "");
+        section.innerHTML = `<article class="panel glass"><p class="muted">⚠️ Could not load ${escapeHtml(name)}. Check file is at root or views/.</p></article>`;
         return;
       }
 
