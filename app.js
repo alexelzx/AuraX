@@ -122,7 +122,8 @@ const state = {
   heading: 0,
   myLocation: null,
   targetLocation: null,
-  deferredInstallPrompt: null
+  deferredInstallPrompt: null,
+  isListenerActive: false
 };
 
 init();
@@ -318,6 +319,8 @@ function setupRoleUI() {
 }
 
 function subscribeCoreData() {
+  state.isListenerActive = true;
+  updateSyncIndicator();
   const uid = auth.currentUser?.uid;
   const usersQ = query(collection(db, "users"), orderBy("auraPoints", "desc"));
   const usersUnsub = onSnapshot(usersQ, (snapshot) => {
@@ -410,7 +413,16 @@ function subscribeCoreData() {
   state.unsubscribers.push(usersUnsub, ...extraUnsubs);
 }
 
+function updateSyncIndicator() {
+  if (!els.syncIndicator) {
+    return;
+  }
+  els.syncIndicator.classList.toggle("hidden", !state.isListenerActive);
+}
+
 function clearSubscriptions() {
+  state.isListenerActive = false;
+  updateSyncIndicator();
   while (state.unsubscribers.length > 0) {
     const unsub = state.unsubscribers.pop();
     if (typeof unsub === "function") {
@@ -2082,10 +2094,12 @@ function cacheDynamicElements() {
     logsList: document.getElementById("logs-list"),
     compassTarget: document.getElementById("compass-target"),
     compassStatus: document.getElementById("compass-status"),
-    compassArrow: document.getElementById("compass-arrow"),
+  el.compassArrow: null,
     participantsLocationList: document.getElementById("participants-location-list"),
     enableLocationBtn: document.getElementById("enable-location-btn"),
     enableOrientationBtn: document.getElementById("enable-orientation-btn"),
+    compassDistance: document.getElementById("compass-distance"),
+    syncIndicator: document.getElementById("sync-indicator"),
     profileForm: document.getElementById("profile-form"),
     profileDisplayName: document.getElementById("profile-display-name"),
     profileEmail: document.getElementById("profile-email"),
@@ -2117,6 +2131,21 @@ function bearingBetween(from, to) {
 
   return normalizeDegrees(toDeg(Math.atan2(y, x)));
 }
+
+function haversineDistance(from, to) {
+  const R = 6371;
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  const dLat = toRad(to.lat - from.lat);
+  const dLon = toRad(to.lng - from.lng);
+
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1) * Math.cos(lat2) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 
 export function calculateLevelAndMastery(auraPoints) {
   const points = Math.max(0, Number(auraPoints || 0));
@@ -2260,3 +2289,6 @@ function escapeHtml(input) {
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+
+
