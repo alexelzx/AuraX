@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="maskgrad192" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#86b8ff" />
+      <stop offset="100%" stop-color="#5de2c3" />
+    </linearGradient>
+  </defs>
+  <circle cx="96" cy="96" r="92" fill="#0b1017" />
+  <circle cx="96" cy="96" r="48" fill="none" stroke="url(#maskgrad192)" stroke-width="7" />
+  <path d="M96 30 L130 78 L108 78 L128 138 L96 109 L64 138 L84 78 L62 78 Z" fill="url(#maskgrad192)" />
+</svg>

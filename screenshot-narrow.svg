@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 720">
+  <defs>
+    <linearGradient id="bg-narrow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f2e43" />
+      <stop offset="100%" stop-color="#08111b" />
+    </linearGradient>
+  </defs>
+  <rect width="540" height="720" fill="url(#bg-narrow)" />
+  <rect x="10" y="10" width="520" height="60" rx="12" fill="rgba(255, 255, 255, 0.08)" stroke="rgba(255, 255, 255, 0.14)" stroke-width="1" />
+  <text x="30" y="50" font-family="sans-serif" font-size="28" font-weight="700" fill="#f3f6fb">AuraX</text>
+  <circle cx="270" cy="280" r="80" fill="none" stroke="rgba(134, 184, 255, 0.6)" stroke-width="6" />
+  <text x="270" y="350" font-family="sans-serif" font-size="20" fill="#b2c0d8" text-anchor="middle">Dashboard</text>
+  <rect x="20" y="400" width="500" height="50" rx="10" fill="rgba(134, 184, 255, 0.2)" stroke="rgba(134, 184, 255, 0.35)" stroke-width="1" />
+  <text x="270" y="435" font-family="sans-serif" font-size="18" fill="#f3f6fb" text-anchor="middle" font-weight="600">Aura Points: 45,000</text>
+  <g opacity="0.3">
+    <rect x="20" y="480" width="500" height="40" rx="8" fill="rgba(255, 255, 255, 0.06)" />
+    <rect x="20" y="530" width="500" height="40" rx="8" fill="rgba(255, 255, 255, 0.06)" />
+    <rect x="20" y="580" width="500" height="40" rx="8" fill="rgba(255, 255, 255, 0.06)" />
+  </g>
+</svg>
