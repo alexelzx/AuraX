@@ -1930,15 +1930,29 @@ async function loadViewPartials() {
         return;
       }
 
-      try {
-        const response = await fetch(path, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+      const fallbackRootPath = path.replace(/^views\//, "");
+      const candidates = [path, fallbackRootPath].filter((value, idx, arr) => value && arr.indexOf(value) === idx);
+
+      let html = null;
+      for (const candidate of candidates) {
+        try {
+          const response = await fetch(candidate, { cache: "no-store" });
+          if (!response.ok) {
+            continue;
+          }
+          html = await response.text();
+          break;
+        } catch {
+          // Try next candidate.
         }
-        section.innerHTML = await response.text();
-      } catch {
-        section.innerHTML = `<article class="panel glass"><p class="muted">Could not load ${escapeHtml(path)}.</p></article>`;
       }
+
+      if (html == null) {
+        section.innerHTML = `<article class="panel glass"><p class="muted">Could not load ${escapeHtml(path)}. Keep view files in views/ or root.</p></article>`;
+        return;
+      }
+
+      section.innerHTML = html;
     })
   );
 }
