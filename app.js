@@ -764,6 +764,9 @@ function renderSelectOptions() {
   fillSelect(els.coinTarget, participants);
   fillSelect(els.adminTarget, everyone);
 
+  ensureCurrentUserOption(els.voteSessionTarget);
+  ensureCurrentUserOption(els.adminTarget);
+
   allSelects.forEach((select) => {
     select.disabled = select.options.length === 0;
   });
@@ -787,6 +790,23 @@ function fillSelect(selectEl, users) {
   if (previous && users.some((u) => u.id === previous)) {
     selectEl.value = previous;
   }
+}
+
+function ensureCurrentUserOption(selectEl) {
+  if (!selectEl || !auth.currentUser?.uid) {
+    return;
+  }
+
+  const myUid = auth.currentUser.uid;
+  const hasOption = Array.from(selectEl.options).some((option) => option.value === myUid);
+  if (hasOption) {
+    return;
+  }
+
+  const option = document.createElement("option");
+  option.value = myUid;
+  option.textContent = state.me?.displayName || auth.currentUser.email || "You";
+  selectEl.appendChild(option);
 }
 
 function renderLogs(logs) {
