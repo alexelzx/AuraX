@@ -1,0 +1,40 @@
+<article class="panel glass full-width">
+  <div class="panel-head">
+    <h2>Profile</h2>
+    <p class="muted">Inspect participants and edit your public profile data.</p>
+  </div>
+
+  <article id="profile-inspector-card" class="list-item profile-inspector">
+    <div class="profile-inspector-head">
+      <img id="inspector-photo" class="avatar" src="" alt="Participant photo" />
+      <div>
+        <h3 id="inspector-name">Participant</h3>
+        <p id="inspector-email" class="muted">email@example.com</p>
+      </div>
+    </div>
+    <p class="muted">Last known GPS: <span id="inspector-gps">Unknown</span></p>
+    <p class="muted">Last GPS update: <span id="inspector-gps-updated">Unknown</span></p>
+    <p class="muted">Last login: <span id="inspector-last-login">Unknown</span></p>
+    <p class="muted">Performance: <span id="inspector-performance" class="status-pill">Unknown</span></p>
+  </article>
+
+  <form id="profile-form" class="stack profile-form">
+    <label>
+      Display Name
+      <input id="profile-display-name" type="text" minlength="2" maxlength="40" required placeholder="Your podium name" />
+    </label>
+    <label>
+      Email
+      <input id="profile-email" type="email" required placeholder="you@domain.com" />
+    </label>
+    <label>
+      Photo URL (optional)
+      <input id="profile-photo-url" type="url" placeholder="https://example.com/avatar.jpg" />
+    </label>
+    <label>
+      Profile Color
+      <input id="profile-color" type="color" value="#86b8ff" />
+    </label>
+    <button id="profile-save-btn" class="btn btn-primary" type="submit">Save Profile</button>
+  </form>
+</article>

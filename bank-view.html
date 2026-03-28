@@ -1,0 +1,68 @@
+<article class="panel glass full-width bank-balance">
+  <div class="panel-head">
+    <h2>AuraBank</h2>
+    <p class="muted">Your liquid balance for transfer decisions</p>
+  </div>
+  <div class="bank-kpis">
+    <div class="stat-chip">
+      <p class="label">Available Aura</p>
+      <h3 id="bank-aura">0</h3>
+    </div>
+    <div class="stat-chip">
+      <p class="label">Tradable AuraCoins</p>
+      <h3 id="bank-coins">0</h3>
+    </div>
+  </div>
+</article>
+
+<article class="panel glass">
+  <h2>Trade Aura -> AuraCoins</h2>
+  <form id="trade-aura-form" class="stack">
+    <label>
+      Aura to trade
+      <input id="trade-aura-amount" type="number" min="10000" step="10000" required placeholder="10000" />
+    </label>
+    <div class="list-item">
+      <p class="muted">Raw estimate: <span id="trade-aura-raw">0 AuraCoins</span></p>
+      <p class="muted">After tax: <span id="trade-aura-net">0 AuraCoins</span></p>
+    </div>
+    <button class="btn btn-primary" type="submit">Trade Aura for AuraCoins</button>
+    <p class="muted">Rate: 10,000 Aura = 1 AuraCoin.</p>
+  </form>
+</article>
+
+<article class="panel glass">
+  <h2>Re-Trade AuraCoins -> Aura</h2>
+  <form id="trade-coins-form" class="stack">
+    <label>
+      AuraCoins to redeem
+      <input id="trade-coins-amount" type="number" min="1" step="1" required placeholder="1" />
+    </label>
+    <div class="list-item">
+      <p class="muted">Raw estimate: <span id="trade-coins-raw">0 Aura</span></p>
+      <p class="muted">After 50% tax: <span id="trade-coins-net">0 Aura</span></p>
+    </div>
+    <button class="btn btn-primary" type="submit">Redeem AuraCoins</button>
+    <p class="muted">Re-trade tax: 50% of raw Aura value.</p>
+  </form>
+</article>
+
+<article class="panel glass">
+  <h2>Send AuraCoin</h2>
+  <form id="coin-form" class="stack">
+    <label>
+      Target Participant
+      <select id="coin-target" required></select>
+    </label>
+    <button class="btn btn-primary" type="submit">Send 1 AuraCoin</button>
+    <p class="muted">Receiver gets +5,000 Aura instantly (50% tax applied).</p>
+  </form>
+</article>
+
+<article class="panel glass full-width">
+  <div class="panel-head">
+    <h2>AuraCoin History</h2>
+    <p class="muted">Incoming and outgoing coin-based transactions</p>
+  </div>
+  <ul id="coin-history-list" class="list"></ul>
+</article>

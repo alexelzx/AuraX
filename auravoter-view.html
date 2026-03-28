@@ -1,0 +1,34 @@
+<article class="panel glass">
+  <div class="panel-head">
+    <h2>Aura Voting Sessions</h2>
+    <p class="muted">Everyone, including admin, can vote up/down</p>
+  </div>
+  <ul id="aura-vote-sessions-list" class="list"></ul>
+</article>
+
+<article class="panel glass">
+  <div class="panel-head">
+    <h2>Contest Polls</h2>
+    <p class="muted">Generated automatically from contested Aura history within 48h</p>
+  </div>
+  <ul id="contest-polls-list" class="list"></ul>
+</article>
+
+<article class="panel glass">
+  <h2>Request Aura</h2>
+  <form id="request-form" class="stack">
+    <label>
+      Admin Target
+      <select id="request-target" required></select>
+    </label>
+    <label>
+      Requested Amount
+      <input id="request-amount" type="number" min="1" required placeholder="500" />
+    </label>
+    <label>
+      Reason
+      <textarea id="request-reason" rows="3" required placeholder="Describe the impact"></textarea>
+    </label>
+    <button class="btn btn-primary" type="submit">Submit Request</button>
+  </form>
+</article>

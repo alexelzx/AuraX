@@ -1,0 +1,32 @@
+<article class="panel glass full-width">
+  <div class="panel-head">
+    <h2>Compass</h2>
+    <p class="muted">Find a participant by last known coordinates.</p>
+  </div>
+
+  <div class="stack">
+    <label>
+      Target Participant
+      <select id="compass-target" required></select>
+    </label>
+    <div class="row">
+      <button id="enable-location-btn" type="button" class="btn btn-primary">Enable Location</button>
+      <button id="enable-orientation-btn" type="button" class="btn btn-tonal">Enable Orientation</button>
+    </div>
+    <p id="compass-status" class="muted">Location permission required.</p>
+  </div>
+
+  <div class="compass-wrap">
+    <div class="compass-ring"></div>
+    <div id="compass-arrow" class="compass-arrow"></div>
+    <div class="compass-core"></div>
+  </div>
+</article>
+
+<article class="panel glass full-width">
+  <div class="panel-head">
+    <h2>Participants Locator</h2>
+    <p class="muted">Last GPS update and one-click locate action</p>
+  </div>
+  <ul id="participants-location-list" class="list"></ul>
+</article>

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AuraX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js",
+          "firebase/analytics": "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js",
+          "firebase/storage": "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+    <div class="bg-grid"></div>
+
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        <div>
+          <h1>AuraX</h1>
+          <p>Collective energy platform</p>
+        </div>
+      </div>
+      <div class="topbar-actions" id="topbar-actions">
+        <button id="logout-btn" class="btn btn-ghost hidden">Logout</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section id="auth-shell" class="panel glass animate-in">
+        <h2>Sign in to AuraX</h2>
+        <p class="muted">Accounts are provisioned by admin. Sign in with your assigned credentials.</p>
+        <form id="email-auth-form" class="stack" autocomplete="on">
+          <label>
+            Email
+            <input id="auth-email" type="email" required placeholder="you@domain.com" />
+          </label>
+          <label>
+            Password
+            <input id="auth-password" type="password" minlength="6" required placeholder="Min 6 chars" />
+          </label>
+          <div class="row">
+            <button type="button" id="email-login-btn" class="btn btn-primary">Login</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="app-shell" class="hidden">
+        <nav class="tabs glass" id="tabs">
+          <button class="tab active" data-view="dashboard-view">Dashboard</button>
+          <button class="tab" data-view="aurastats-view">AuraStats</button>
+          <button class="tab" data-view="auraview-view">AuraView</button>
+          <button class="tab" data-view="auravoter-view">AuraVoter</button>
+          <button class="tab" data-view="bank-view">AuraBank</button>
+          <button class="tab" data-view="admin-view">Admin</button>
+          <button class="tab" data-view="compass-view">Compass</button>
+          <button class="tab" data-view="profile-view">Profile</button>
+        </nav>
+
+        <section
+          id="dashboard-view"
+          class="view-grid animate-in"
+          data-partial="views/dashboard-view.html"
+        ></section>
+
+        <section
+          id="aurastats-view"
+          class="hidden animate-in"
+          data-partial="views/aurastats-view.html"
+        ></section>
+
+        <section
+          id="auraview-view"
+          class="hidden animate-in"
+          data-partial="views/auraview-view.html"
+        ></section>
+
+        <section
+          id="auravoter-view"
+          class="view-grid hidden animate-in"
+          data-partial="views/auravoter-view.html"
+        ></section>
+
+        <section
+          id="bank-view"
+          class="view-grid hidden animate-in"
+          data-partial="views/bank-view.html"
+        ></section>
+
+        <section
+          id="admin-view"
+          class="view-grid hidden animate-in"
+          data-partial="views/admin-view.html"
+        ></section>
+
+        <section
+          id="compass-view"
+          class="hidden animate-in"
+          data-partial="views/compass-view.html"
+        ></section>
+
+        <section
+          id="profile-view"
+          class="view-grid hidden animate-in"
+          data-partial="views/profile-view.html"
+        ></section>
+      </section>
+    </main>
+
+    <button id="fab-refresh" class="fab" type="button" title="Refresh listeners">↻</button>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
