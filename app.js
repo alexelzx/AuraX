@@ -29,6 +29,7 @@ const shell = {
 
   logoutBtn: document.getElementById("logout-btn"),
   emailLoginBtn: document.getElementById("email-login-btn"),
+  downloadAppBtn: document.getElementById("download-app-btn"),
   authEmail: document.getElementById("auth-email"),
   authPassword: document.getElementById("auth-password"),
 
@@ -217,11 +218,11 @@ async function handleInstallAppClick() {
   }
 
   if (isIosSafari()) {
-    toast("On iPhone: Share button -> Add to Home Screen.");
+    toast("On iPhone: open Share, then tap Add to Home Screen.");
     return;
   }
 
-  toast("Install option appears in browser menu: Add to Home screen.");
+  toast("Open your browser menu and tap Add to Home screen.");
 }
 
 function isStandaloneMode() {
@@ -245,8 +246,7 @@ function wireUiEvents() {
     }
   });
 
-  shell.downloadAppBtn = document.getElementById("download-app-btn");
-  shell.downloadAppBtn?.addEventListener("click", handleDownloadApp);
+  shell.downloadAppBtn?.addEventListener("click", handleInstallAppClick);
 
   shell.logoutBtn.addEventListener("click", async () => {
     await logout();
@@ -295,6 +295,17 @@ function wireUiEvents() {
   });
 
   shell.installAppBtn?.addEventListener("click", handleInstallAppClick);
+}
+
+function validateListeners() {
+  if (!auth.currentUser) {
+    return;
+  }
+
+  if (!Array.isArray(state.unsubscribers) || state.unsubscribers.length === 0) {
+    clearSubscriptions();
+    subscribeCoreData();
+  }
 }
 
 function toggleApp(isSignedIn) {
