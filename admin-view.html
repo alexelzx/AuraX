@@ -1,32 +1,10 @@
 <article class="panel glass admin-only">
-  <div class="panel-head">
-    <h2>Start Aura Voting Session</h2>
-    <p class="muted">Create vote sessions from admin workspace</p>
-  </div>
-  <form id="vote-session-form" class="stack">
-    <label>
-      Target Participant
-      <select id="vote-session-target" required></select>
-    </label>
-    <label>
-      Reason
-      <textarea id="vote-session-reason" rows="3" required placeholder="Why this Aura should be considered"></textarea>
-    </label>
-    <label>
-      Proposed Aura Amount
-      <input id="vote-session-amount" type="number" required placeholder="1000 or -500" />
-    </label>
-    <button class="btn btn-primary" type="submit">Start Vote</button>
-  </form>
-</article>
-
-<article class="panel glass admin-only">
-  <h2>Manage Aura Vote Sessions</h2>
+  <h2>Manage Vote Sessions</h2>
   <ul id="admin-vote-sessions-list" class="list"></ul>
 </article>
 
 <article class="panel glass admin-only">
-  <h2>Add / Deduct Aura</h2>
+  <h2>Add / Deduct Points</h2>
   <form id="admin-aura-form" class="stack">
     <label>
       Target User
@@ -54,6 +32,8 @@
 
 <article class="panel glass admin-only">
   <h2>Approval Workflow</h2>
+  <p class="muted">Approve vote proposals before anyone can vote.</p>
+  <ul id="vote-approvals-list" class="list"></ul>
   <ul id="pending-requests-list" class="list"></ul>
 </article>
 
