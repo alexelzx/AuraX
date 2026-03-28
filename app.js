@@ -123,7 +123,11 @@ const state = {
   myLocation: null,
   targetLocation: null,
   deferredInstallPrompt: null,
-  isListenerActive: false
+  isListenerActive: false,
+  lastLocationUpdate: 0,
+  lastOrientationUpdate: 0,
+  pendingRenderUpdates: new Set(),
+  renderScheduled: false
 };
 
 init();
@@ -241,10 +245,17 @@ function wireUiEvents() {
     }
   });
 
+  shell.downloadAppBtn = document.getElementById("download-app-btn");
+  shell.downloadAppBtn?.addEventListener("click", handleDownloadApp);
+
   shell.logoutBtn.addEventListener("click", async () => {
     await logout();
     toast("Logged out.");
   });
+
+  setTimeout(() => {
+    validateListeners();
+  }, 1000);
 
   shell.tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".tab");
@@ -322,6 +333,7 @@ function subscribeCoreData() {
   state.isListenerActive = true;
   updateSyncIndicator();
   const uid = auth.currentUser?.uid;
+  const now = Date.now();
   const usersQ = query(collection(db, "users"), orderBy("auraPoints", "desc"));
   const usersUnsub = onSnapshot(usersQ, (snapshot) => {
     state.users = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
@@ -2094,7 +2106,7 @@ function cacheDynamicElements() {
     logsList: document.getElementById("logs-list"),
     compassTarget: document.getElementById("compass-target"),
     compassStatus: document.getElementById("compass-status"),
-  el.compassArrow: null,
+    compassArrow: document.getElementById("compass-arrow"),
     participantsLocationList: document.getElementById("participants-location-list"),
     enableLocationBtn: document.getElementById("enable-location-btn"),
     enableOrientationBtn: document.getElementById("enable-orientation-btn"),
@@ -2289,6 +2301,9 @@ function escapeHtml(input) {
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+
+
 
 
 
