@@ -18,7 +18,6 @@ const CORE_ASSETS = [
   "./views/auravoter-view.html",
   "./views/bank-view.html",
   "./views/admin-view.html",
-  "./views/compass-view.html",
   "./views/profile-view.html"
 ];
 
