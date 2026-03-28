@@ -32,7 +32,8 @@ const shell = {
   authEmail: document.getElementById("auth-email"),
   authPassword: document.getElementById("auth-password"),
 
-  fabRefresh: document.getElementById("fab-refresh")
+  fabRefresh: document.getElementById("fab-refresh"),
+  installAppBtn: document.getElementById("install-app-btn")
 };
 
 let els = {
@@ -120,12 +121,14 @@ const state = {
   unsubscribers: [],
   heading: 0,
   myLocation: null,
-  targetLocation: null
+  targetLocation: null,
+  deferredInstallPrompt: null
 };
 
 init();
 
 async function init() {
+  initPwaSupport();
   await loadViewPartials();
   cacheDynamicElements();
   wireUiEvents();
@@ -156,6 +159,75 @@ async function init() {
     setupRoleUI();
     subscribeCoreData();
   });
+}
+
+function initPwaSupport() {
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js").catch(() => {
+        // App remains fully usable without offline support.
+      });
+    });
+  }
+
+  if (isStandaloneMode()) {
+    shell.installAppBtn?.classList.add("hidden");
+    return;
+  }
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    state.deferredInstallPrompt = event;
+    shell.installAppBtn?.classList.remove("hidden");
+  });
+
+  window.addEventListener("appinstalled", () => {
+    state.deferredInstallPrompt = null;
+    shell.installAppBtn?.classList.add("hidden");
+    toast("AuraX installed.");
+  });
+
+  if (isIosSafari()) {
+    shell.installAppBtn?.classList.remove("hidden");
+  }
+}
+
+async function handleInstallAppClick() {
+  if (isStandaloneMode()) {
+    toast("AuraX is already installed.");
+    return;
+  }
+
+  if (state.deferredInstallPrompt) {
+    const promptEvent = state.deferredInstallPrompt;
+    state.deferredInstallPrompt = null;
+
+    try {
+      await promptEvent.prompt();
+      await promptEvent.userChoice;
+    } catch {
+      // User dismissed prompt or browser canceled.
+    }
+    return;
+  }
+
+  if (isIosSafari()) {
+    toast("On iPhone: Share button -> Add to Home Screen.");
+    return;
+  }
+
+  toast("Install option appears in browser menu: Add to Home screen.");
+}
+
+function isStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isIosSafari() {
+  const ua = window.navigator.userAgent || "";
+  const isIos = /iPad|iPhone|iPod/i.test(ua);
+  const isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+  return isIos && isSafari;
 }
 
 function wireUiEvents() {
@@ -209,6 +281,8 @@ function wireUiEvents() {
     subscribeCoreData();
     toast("Refreshed listeners.");
   });
+
+  shell.installAppBtn?.addEventListener("click", handleInstallAppClick);
 }
 
 function toggleApp(isSignedIn) {
