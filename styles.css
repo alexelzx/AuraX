@@ -130,43 +130,6 @@ p {
   gap: 0.6rem;
   align-items: center;
 }
-
-.sync-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
-  background: rgba(93, 226, 195, 0.15);
-  border: 1px solid rgba(93, 226, 195, 0.3);
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #5de2c3;
-}
-
-.sync-spinner {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #5de2c3;
-  animation: syncPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes syncPulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(1.2);
-  }
-}
-
-.sync-text {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
 .glass {
   background: var(--glass);
   backdrop-filter: blur(16px);
@@ -183,23 +146,6 @@ p {
 
 .admin-only {
   position: relative;
-}
-
-.admin-only::before {
-  content: "A";
-  position: absolute;
-  top: 0.5rem;
-  right: 0.6rem;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.68rem;
-  font-weight: 800;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .panel-head {
