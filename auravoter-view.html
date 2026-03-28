@@ -1,7 +1,29 @@
 <article class="panel glass">
   <div class="panel-head">
+    <h2>Create Vote</h2>
+    <p class="muted">Submit a vote proposal for admin approval before voting opens.</p>
+  </div>
+  <form id="vote-session-form" class="stack">
+    <label>
+      Target User
+      <select id="vote-session-target" required></select>
+    </label>
+    <label>
+      Aura Amount (positive or negative)
+      <input id="vote-session-amount" type="number" required placeholder="1000 or -500" />
+    </label>
+    <label>
+      Reason
+      <textarea id="vote-session-reason" rows="3" required placeholder="Why this vote should happen"></textarea>
+    </label>
+    <button class="btn btn-primary" type="submit">Create Vote</button>
+  </form>
+</article>
+
+<article class="panel glass">
+  <div class="panel-head">
     <h2>Aura Voting Sessions</h2>
-    <p class="muted">Everyone, including admin, can vote up/down</p>
+    <p class="muted">Admin-approved sessions open for 1 minute or until everyone responds.</p>
   </div>
   <ul id="aura-vote-sessions-list" class="list"></ul>
 </article>
