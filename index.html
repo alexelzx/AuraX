@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#050816" />
+    <meta name="description" content="AuraX - a mobile-first social aura tracker with leaderboard, requests, economy, and badges." />
+    <title>AuraX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="aurax-bg aurax-bg-one"></div>
+    <div class="aurax-bg aurax-bg-two"></div>
+    <div class="aurax-shell">
+      <header class="topbar glass">
+        <div>
+          <p class="eyebrow">AuraX</p>
+          <h1>Mobile Aura Control</h1>
+          <p class="subtle">Dark-mode social gamification, leaderboards, approvals, and live aura economy.</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="mode-switcher" role="tablist" aria-label="Layout mode">
+            <button id="mobileModeBtn" class="mode-chip is-active" type="button" data-ui-mode="mobile">
+              <span class="material-symbols-rounded" aria-hidden="true">smartphone</span>
+              Mobile
+            </button>
+            <button id="desktopModeBtn" class="mode-chip" type="button" data-ui-mode="desktop">
+              <span class="material-symbols-rounded" aria-hidden="true">desktop_windows</span>
+              Desktop
+            </button>
+          </div>
+          <button id="themeModeBtn" class="icon-pill" type="button" aria-label="Toggle admin mode">
+            <span class="material-symbols-rounded" aria-hidden="true">shield_person</span>
+            <span id="modeLabel">Participant</span>
+          </button>
+          <div class="auth-status">
+            <span id="userEmail" class="subtle" aria-hidden="true"></span>
+            <button id="authToggleBtn" class="pill-button" type="button">Sign in</button>
+          </div>
+        </div>
+      </header>
+
+      <nav id="appTabs" class="app-tabs glass" aria-label="App sections">
+        <button class="app-tab is-active" type="button" data-tab="dashboard">
+          <span class="material-symbols-rounded" aria-hidden="true">space_dashboard</span>
+          Dashboard
+        </button>
+        <button class="app-tab" type="button" data-tab="participant">
+          <span class="material-symbols-rounded" aria-hidden="true">groups</span>
+          Participant
+        </button>
+        <button class="app-tab" type="button" data-tab="admin" data-admin-only="true">
+          <span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>
+          Admin
+        </button>
+        <button class="app-tab" type="button" data-tab="activity">
+          <span class="material-symbols-rounded" aria-hidden="true">dynamic_feed</span>
+          Activity
+        </button>
+      </nav>
+
+      <main class="layout">
+        <section class="panel-group" data-panel="dashboard">
+          <section class="hero glass">
+            <div class="hero-copy">
+              <p class="eyebrow">Your Aura</p>
+              <div class="hero-stats">
+                <div>
+                  <span class="stat-label">Balance</span>
+                  <strong id="balanceValue">0</strong>
+                  <span class="stat-hint">Aura points</span>
+                </div>
+                <div>
+                  <span class="stat-label">Level</span>
+                  <strong id="levelValue">0</strong>
+                  <span class="stat-hint" id="profileMasteryHint">Mastery I</span>
+                </div>
+                <div>
+                  <span class="stat-label">AuraCoins</span>
+                  <strong id="coinValue">0</strong>
+                  <span class="stat-hint">Wallet</span>
+                </div>
+              </div>
+              <div id="profileBadges" class="badge-row"></div>
+            </div>
+            <div class="hero-meter">
+              <div id="masteryRing" class="ring">
+                <div class="ring-inner">
+                  <span id="ringMastery">Mastery I</span>
+                  <strong id="ringLevel">0</strong>
+                </div>
+              </div>
+              <div class="progress-copy">
+                <span>Next AuraCoin in</span>
+                <strong id="coinProgress">10,000 Aura</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="section grid-2">
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">The Podium</p>
+                  <h2>Leaderboard</h2>
+                </div>
+                <button class="pill-button" id="refreshViewBtn" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
+                  Refresh
+                </button>
+              </div>
+              <div id="leaderboard" class="leaderboard"></div>
+            </article>
+
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Status</p>
+                  <h2>Mastery Badges</h2>
+                </div>
+              </div>
+              <div id="badgeShelf" class="badge-shelf"></div>
+              <div class="card-divider"></div>
+              <div class="card-head compact-head">
+                <div>
+                  <p class="eyebrow">Achievements</p>
+                  <h2>Unlocked Milestones</h2>
+                </div>
+              </div>
+              <div id="achievementShelf" class="achievement-list"></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="panel-group" data-panel="participant">
+          <section class="section grid-3">
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Participant</p>
+                  <h2>Voting</h2>
+                </div>
+              </div>
+              <div id="voteTargets" class="stack"></div>
+            </article>
+
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Requests</p>
+                  <h2>Submit Aura Request</h2>
+                </div>
+              </div>
+              <form id="requestForm" class="form stack">
+                <label>
+                  Target participant
+                  <select id="requestTarget"></select>
+                </label>
+                <label>
+                  Adjustment
+                  <input id="requestDelta" type="number" min="-100000" max="100000" step="100" value="1000" />
+                </label>
+                <label>
+                  Title
+                  <input id="requestTitle" type="text" maxlength="60" placeholder="Clutch save, clean assist, aura moment" />
+                </label>
+                <label>
+                  Description
+                  <textarea id="requestDescription" rows="4" maxlength="300" placeholder="Explain the aura event or reason"></textarea>
+                </label>
+                <button class="action-button" type="submit">Send to admin</button>
+              </form>
+            </article>
+
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Economy</p>
+                  <h2>AuraCoins</h2>
+                </div>
+              </div>
+              <form id="coinForm" class="form stack">
+                <label>
+                  Recipient
+                  <select id="coinTarget"></select>
+                </label>
+                <label>
+                  Coins to send
+                  <input id="coinAmount" type="number" min="1" max="999" value="1" />
+                </label>
+                <div class="info-row">
+                  <span>Fee</span>
+                  <strong>50%</strong>
+                </div>
+                <div class="info-row">
+                  <span>Receiver gets</span>
+                  <strong>+5,000 Aura per coin</strong>
+                </div>
+                <button class="action-button" type="submit">Send AuraCoins</button>
+              </form>
+            </article>
+          </section>
+        </section>
+
+        <section class="panel-group" data-panel="admin">
+          <section class="section grid-2">
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Admin Mode</p>
+                  <h2>Aura Management</h2>
+                </div>
+              </div>
+              <form id="adminForm" class="form stack">
+                <label>
+                  Target participant
+                  <select id="adminTarget"></select>
+                </label>
+                <label>
+                  Adjustment
+                  <input id="adminDelta" type="number" min="-100000" max="100000" step="100" value="500" />
+                </label>
+                <label>
+                  Title
+                  <input id="adminTitle" type="text" maxlength="60" placeholder="Admin review or manual adjustment" />
+                </label>
+                <label>
+                  Description
+                  <textarea id="adminDescription" rows="4" maxlength="300" placeholder="Why is this aura being changed?"></textarea>
+                </label>
+                <label>
+                  Photo support
+                  <input id="adminPhoto" type="file" accept="image/*" />
+                </label>
+                <button class="action-button" type="submit">Apply adjustment</button>
+              </form>
+            </article>
+
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Approvals</p>
+                  <h2>Request Inbox</h2>
+                </div>
+                <button class="pill-button" id="seedBtn" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">restart_alt</span>
+                  Reset demo
+                </button>
+              </div>
+              <div id="requestInbox" class="stack"></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="panel-group" data-panel="activity">
+          <section class="section">
+            <article class="glass card">
+              <div class="card-head">
+                <div>
+                  <p class="eyebrow">Live Feed</p>
+                  <h2>Transactions and System Events</h2>
+                </div>
+              </div>
+              <div id="activityFeed" class="activity-feed"></div>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <template id="leaderboardItemTemplate">
+      <article class="leader-card">
+        <div class="leader-rank"></div>
+        <div class="leader-main">
+          <div class="leader-topline">
+            <strong class="leader-name"></strong>
+            <span class="leader-tag"></span>
+          </div>
+          <div class="leader-bars">
+            <div class="leader-bar"><span></span></div>
+            <div class="leader-meta"></div>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="firebase-config.js"></script>
+    <div id="authOverlay" class="auth-overlay hidden">
+      <form id="authForm" class="auth-card">
+        <h3>Sign in to AuraX</h3>
+        <label>
+          Email
+          <input id="authEmail" type="email" required />
+        </label>
+        <label>
+          Password
+          <input id="authPassword" type="password" required />
+        </label>
+        <div class="auth-actions">
+          <button id="signInBtn" type="button" class="action-button">Sign in</button>
+          <button id="registerBtn" type="button" class="pill-button">Register</button>
+          <button id="signOutBtn" type="button" class="mini-button hidden">Sign out</button>
+        </div>
+        <button id="closeAuthBtn" type="button" class="mini-button">Close</button>
+      </form>
+    </div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
