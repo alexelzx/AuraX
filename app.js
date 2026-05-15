@@ -89,6 +89,31 @@ async function initFirebase() {
         els.authToggleBtn.textContent = "Account";
         // now initialize Firestore syncing
         initFirestoreSync();
+
+        // Ensure a users/{uid} document exists and load role
+        (async () => {
+          try {
+            const { getFirestore, doc, getDoc, setDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js");
+            firebaseState.db = firebaseState.db || getFirestore(firebaseState.app);
+            const userRef = doc(firebaseState.db, "users", user.uid);
+            const snap = await getDoc(userRef);
+            if (!snap.exists()) {
+              await setDoc(userRef, { email: user.email, role: "participant", createdAt: serverTimestamp() });
+              state.mode = "participant";
+            } else {
+              const data = snap.data();
+              if (data?.role === "admin") {
+                state.mode = "admin";
+              } else {
+                state.mode = "participant";
+              }
+            }
+            persist();
+            render();
+          } catch (e) {
+            console.warn("User doc check failed", e);
+          }
+        })();
       } else {
         els.userEmail.textContent = "";
         els.signOutBtn.classList.add("hidden");
@@ -333,7 +358,19 @@ async function onRegister() {
   }
   try {
     const { createUserWithEmailAndPassword } = firebaseState.mods;
-    await createUserWithEmailAndPassword(firebaseState.auth, email, password);
+    const userCred = await createUserWithEmailAndPassword(firebaseState.auth, email, password);
+    // create a users/{uid} doc for role and basic profile
+    try {
+      const { getFirestore, doc, setDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js");
+      firebaseState.db = firebaseState.db || getFirestore(firebaseState.app);
+      await setDoc(doc(firebaseState.db, "users", userCred.user.uid), {
+        email: userCred.user.email,
+        role: "participant",
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn("Failed to create user doc", e);
+    }
     toast("Account created and signed in");
     els.authOverlay.classList.add("hidden");
   } catch (err) {
